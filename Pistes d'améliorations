@@ -1,0 +1,8 @@
+Cas non traités:
+	1 - Si G_Transporteur plante, la génération de numéro de course peut redémarrer de 0
+	2 - Si un adhérent ne passe prendre ses colis, il n'est actuellement pas possible de le relancer
+
+Pistes d'amélioration :
+	  o Le depôt de colis par un transporteur pose problème si tous les casiers sont plein
+	2 - Il faudrait dater le dépôt des colis et relancer toutes les 24h par exemple 
+	

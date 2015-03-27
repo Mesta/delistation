@@ -1,0 +1,142 @@
+module delistation{
+
+	struct Zone{
+		short commune;
+		short quartier;
+	};
+	
+	struct Adresse{
+		string nom;
+		short numero;
+		string rue;
+		Zone zone;
+	};
+	typedef sequence<Adresse> LAdresses;
+
+	struct Facture{
+		short somme;
+		short datePaiement;
+	};
+	typedef sequence<Facture> LFactures;
+
+	struct Adherent {
+		short no;
+		string nom;
+		string prenom;
+		Adresse adresse;
+		string RIB;
+		string MdP;
+		string IORAppliCliente;
+	};
+	
+	struct Transporteur{
+		short noTransporteur;
+		string raisonSociale;
+		string MdP;
+	};
+
+	struct Colis{
+		short noColis;
+		short expediteur;
+		short destinataire;
+	};
+	typedef sequence<Colis> LColis;
+	
+	enum etatColis{
+		enAttenteDeTransport,
+		auDepart,
+		enTransport,
+		aDestination
+	};
+	
+	enum CompteMode{
+		Adherent,
+		Transporteur
+	};
+
+	struct Course{
+		short noCourse;
+		short noColis;
+		string IORG_Colis;
+		short noTransp;
+		short montant;
+		long long datePriseEnCharge;
+	};
+	typedef sequence<Course> LCourses;
+	
+	exception ExceptionTransporteurInconnu{};
+	exception ExceptionErreurInscription{};
+	exception ExceptionAdresseDejaPrise{};
+	exception ExceptionDestinataireInconnue{};
+	exception ExceptionDestinationMemeZone{};
+	exception ExceptionColisInconnu{};
+	exception ExceptionErreurPaiement{string raison;};
+	exception ExceptionAdherentInconnu{}; 
+	exception ExceptionMauvaisTransporteur{};
+	exception ExceptionCourseDejaPrise{};
+	exception ExceptionCourseInconnue{};
+	
+	module g_adherents{
+		interface G_Adherents{
+			short adherer (in string nom, in string prenom, in string adresse, in string RIB, inout string noAdh, inout string MdP) raises (ExceptionErreurPaiement, ExceptionAdresseDejaPrise, ExceptionErreurInscription); 
+			boolean authentifier (in short noAdh, in string MdP);
+			Adherent getAdherent(in short noAdh) raises (ExceptionAdherentInconnu);
+			oneway void majIOR(in short noAdh, in short IOR);
+			Adherent rechercheDestinataire(in Adresse adrDest) raises (ExceptionDestinataireInconnue);
+			boolean facturer(in short noAdh, in short montant) raises (ExceptionErreurPaiement);
+			oneway void demandeNotificationDepot(in short noAdh);
+		};
+	};
+	
+	module g_colis{
+		interface G_Colis{
+			readonly attribute Adresse getAdresseG_Colis;
+			
+			Colis getColis(in short noColis) raises (ExceptionColisInconnu);
+			boolean isDestinataire(in short noColis, in short noAdh);
+			short deposer(in Adresse adrDest, inout Colis colis) raises (ExceptionDestinationMemeZone, ExceptionDestinataireInconnue, ExceptionErreurPaiement);
+			oneway void majEtatColis(in short noColis, in etatColis etat);
+			etatColis demandeEtat(in short noColis) raises (ExceptionColisInconnu);
+			oneway void supprimerColis(in short noColis);
+		};
+	};
+	
+	module g_facturation{
+		interface G_Facturation{
+			boolean creerCompte(in short noAdh, in CompteMode createMode);
+			short factureAdhesion(in string RIB) raises (ExceptionErreurPaiement);
+			short devisTransport(in Zone zoneDep, in Zone zoneDest);
+			boolean debiterAdherent(in string RIB, in short montant) raises (ExceptionErreurPaiement);
+			oneway void crediterTransport(in string RIB, in short montant);
+		};
+	};
+	
+	module g_superviseur{
+		interface G_Superviseur{
+			readonly attribute LCourses CourseEnCours;
+			LCourses rechercheCourseEnCours(in short noAdh);
+			oneway void cloreTransport(in short noColis);
+			boolean enregistrerPriseEnCharge(in Course course) raises (ExceptionCourseDejaPrise);
+			Course verifierTransporteur(in short noTransporteur, in short noCourse) raises (ExceptionMauvaisTransporteur, ExceptionCourseInconnue);
+			boolean estEnRetard(in short noCourse);
+		};
+	};
+	
+	module g_transporteur{
+		interface G_Transporteur{
+			LCourses  getCoursesEnAttente();
+			boolean authentifier (in short noTransp, in string MdP);
+			Transporteur getTransporteur(in short noTransp);
+			string getRIB(in short noTransp) raises(ExceptionTransporteurInconnu);
+			oneway void enregistrerNouveauTransport(in short noColis, in string IORG_Colis, in short montant);
+			oneway void reenregistrerTransport(in Course p_course);
+			oneway void demandeSuppression(in short noCourse);
+		};
+	};
+
+	module appli_adherent{
+		interface Appli_Adherent{
+			oneway void notifierColis();
+		};
+	};
+};
